@@ -9,21 +9,52 @@ use app\modules\fdp\models\FdpAttendance;
 use app\modules\fdp\models\FdpMailService;
 use Yii;
 use yii\data\ActiveDataProvider;
+use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
-use yii\web\UploadedFile;
 
-class DefaultController extends Controller
+class FdpController extends Controller
 {
+    public function behaviors(): array
+    {
+        return [
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'delete' => ['POST'],
+                ],
+            ],
+        ];
+    }
+
     public function actionIndex(): string
     {
+        $searchModel = new Fdp();
+        $query = Fdp::find()->orderBy(['start_date' => SORT_DESC]);
+
+        $search = Yii::$app->request->get('search');
+        if (is_string($search) && trim($search) !== '') {
+            $keyword = trim($search);
+            $query->andFilterWhere([
+                'or',
+                ['like', 'title', $keyword],
+                ['like', 'coordinator_name', $keyword],
+                ['like', 'mode', $keyword],
+            ]);
+        }
+
         $dataProvider = new ActiveDataProvider([
-            'query' => Fdp::find()->orderBy(['start_date' => SORT_DESC]),
+            'query' => $query,
             'pagination' => ['pageSize' => 10],
         ]);
 
-        return $this->render('index', ['dataProvider' => $dataProvider]);
+        return $this->render('index', ['dataProvider' => $dataProvider, 'searchModel' => $searchModel]);
+    }
+
+    public function actionView(int $id): string
+    {
+        return $this->render('view', ['model' => $this->findModel($id)]);
     }
 
     public function actionCreate(): string|Response
@@ -37,13 +68,6 @@ class DefaultController extends Controller
         }
 
         return $this->render('create', ['model' => $model]);
-    }
-
-    public function actionView(int $id): string
-    {
-        $model = $this->findModel($id);
-
-        return $this->render('view', ['model' => $model]);
     }
 
     public function actionUpdate(int $id): string|Response
@@ -63,48 +87,9 @@ class DefaultController extends Controller
     {
         $model = $this->findModel($id);
         $model->delete();
-
         Yii::$app->session->setFlash('success', 'FDP deleted successfully.');
 
         return $this->redirect(['index']);
-    }
-
-    public function actionAttendance(int $id): string|Response
-    {
-        $fdp = $this->findModel($id);
-        $attendance = new FdpAttendance();
-        $attendance->fdp_id = $id;
-
-        if (Yii::$app->request->isPost) {
-            $attendance->load(Yii::$app->request->post());
-            $file = UploadedFile::getInstanceByName('attendance_file');
-
-            if ($file && $file->tempName) {
-                $rows = FdpAttendance::readCsvRows($file->tempName);
-                foreach ($rows as $row) {
-                    $record = new FdpAttendance();
-                    $record->fdp_id = $id;
-                    $record->faculty_name = $row['name'] ?? '';
-                    $record->faculty_email = $row['email'] ?? '';
-                    $record->status = FdpAttendance::normalizeStatus((string) ($row['status'] ?? 'Present'));
-                    $record->save(false);
-                }
-
-                Yii::$app->session->setFlash('success', 'Attendance uploaded successfully.');
-
-                return $this->redirect(['view', 'id' => $id]);
-            }
-
-            if ($attendance->save()) {
-                Yii::$app->session->setFlash('success', 'Attendance updated successfully.');
-
-                return $this->redirect(['view', 'id' => $id]);
-            }
-        }
-
-        $records = $fdp->getAttendanceRecords()->all();
-
-        return $this->render('attendance', ['fdp' => $fdp, 'model' => $attendance, 'records' => $records]);
     }
 
     public function actionDefaulters(int $id): string
@@ -161,7 +146,6 @@ class DefaultController extends Controller
     protected function findModel(int $id): Fdp
     {
         $model = Fdp::findOne($id);
-
         if ($model === null) {
             throw new NotFoundHttpException('The requested FDP does not exist.');
         }

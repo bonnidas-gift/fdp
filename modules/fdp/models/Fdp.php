@@ -8,9 +8,28 @@ use yii\db\ActiveRecord;
 
 class Fdp extends ActiveRecord
 {
+    public string $time_start = '';
+    public string $time_end = '';
+
     public static function tableName(): string
     {
         return 'fdp';
+    }
+
+    public function beforeValidate(): bool
+    {
+        if (parent::beforeValidate()) {
+            $start = trim((string) $this->time_start);
+            $end = trim((string) $this->time_end);
+
+            if ($start !== '' || $end !== '') {
+                $this->time = trim($start . ' - ' . $end);
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     public function rules(): array
@@ -18,7 +37,7 @@ class Fdp extends ActiveRecord
         return [
             [['title', 'start_date', 'end_date', 'mode', 'coordinator_name'], 'required'],
             [['title', 'mode', 'venue', 'meeting_link', 'coordinator_name'], 'string', 'max' => 255],
-            [['time'], 'string', 'max' => 100],
+            [['time', 'time_start', 'time_end'], 'string', 'max' => 100],
             [['start_date', 'end_date'], 'date', 'format' => 'php:Y-m-d'],
         ];
     }
@@ -29,7 +48,9 @@ class Fdp extends ActiveRecord
             'title' => 'FDP Title',
             'start_date' => 'Start Date',
             'end_date' => 'End Date',
-            'time' => 'Date & Time',
+            'time' => 'Time Range',
+            'time_start' => 'Start Time',
+            'time_end' => 'End Time',
             'mode' => 'Mode',
             'venue' => 'Venue',
             'meeting_link' => 'Meeting Link',

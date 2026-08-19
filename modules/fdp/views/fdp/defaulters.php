@@ -24,7 +24,6 @@ $this->title = 'Defaulters for ' . $fdp->title;
                             <th>Name</th>
                             <th>Email</th>
                             <th>Status</th>
-                            <th>Notes</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -33,7 +32,6 @@ $this->title = 'Defaulters for ' . $fdp->title;
                                 <td><?= Html::encode($person->faculty_name) ?></td>
                                 <td><?= Html::encode($person->faculty_email) ?></td>
                                 <td><span class="badge bg-danger"><?= Html::encode($person->status) ?></span></td>
-                                <td><?= Html::encode($person->notes ?? '') ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
