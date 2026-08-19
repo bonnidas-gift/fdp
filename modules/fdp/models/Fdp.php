@@ -58,6 +58,15 @@ class Fdp extends ActiveRecord
         ];
     }
 
+    public function modeOptions(): array
+    {
+        return [
+            'Online' => 'Online',
+            'Offline' => 'Offline',
+            'Hybrid' => 'Hybrid',
+        ];
+    }
+
     public function getAttendanceRecords()
     {
         return $this->hasMany(FdpAttendance::class, ['fdp_id' => 'id']);

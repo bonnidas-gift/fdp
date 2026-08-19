@@ -5,7 +5,7 @@ use yii\helpers\Html;
 
 /** @var \app\modules\fdp\models\Fdp $model */
 ?>
-<?php $form = ActiveForm::begin(['layout' => 'horizontal']); ?>
+<?php $form = ActiveForm::begin(); ?>
     <div class="row g-3">
         <div class="col-md-12">
             <?= $form->field($model, 'title')->textInput(['maxlength' => true, 'class' => 'form-control form-control-lg']) ?>
@@ -42,8 +42,8 @@ use yii\helpers\Html;
 
         <div class="col-md-12 mt-3">
             <div class="d-flex justify-content-end gap-2">
-                <?= Html::a('Cancel', ['index'], ['class' => 'btn btn-outline-secondary']) ?>
-                <?= Html::submitButton($model->isNewRecord ? 'Create FDP' : 'Update FDP', ['class' => $model->isNewRecord ? 'btn btn-primary btn-lg' : 'btn btn-success btn-lg']) ?>
+                <?= Html::a('Cancel', ['index'], ['class' => 'btn btn-outline-secondary btn-sm']) ?>
+                <?= Html::submitButton($model->isNewRecord ? 'Create FDP' : 'Update FDP', ['class' => $model->isNewRecord ? 'btn btn-primary btn-sm' : 'btn btn-success btn-sm']) ?>
             </div>
         </div>
     </div>

@@ -13,7 +13,7 @@ $this->title = 'FDP List';
                 <h1 class="h3 mb-1">FDP List</h1>
                 <p class="text-muted mb-0">Manage all faculty development programmes.</p>
             </div>
-            <?= Html::a('Create FDP', ['create'], ['class' => 'btn btn-primary btn-lg']) ?>
+            <?= Html::a('Create FDP', ['create'], ['class' => 'btn btn-primary btn-md']) ?>
         </div>
 
         <form method="get" class="row g-2 mb-4">
@@ -53,7 +53,7 @@ $this->title = 'FDP List';
                                     <div class="d-flex flex-wrap justify-content-center gap-2">
                                         <?= Html::a('View', ['view', 'id' => $fdp->id], ['class' => 'btn btn-sm btn-outline-primary']) ?>
                                         <?= Html::a('Edit', ['update', 'id' => $fdp->id], ['class' => 'btn btn-sm btn-outline-secondary']) ?>
-                                        <?= Html::a('Attendance', ['/fdp/attendance/index', 'fdpId' => $fdp->id], ['class' => 'btn btn-sm btn-outline-warning']) ?>
+                                        <?= Html::a('Attendance', ['/fdp/attendance/index', 'fdpId' => $fdp->id], ['class' => 'btn btn-sm btn-outline-secondary']) ?>
                                         <?= Html::a('Delete', ['delete', 'id' => $fdp->id], ['class' => 'btn btn-sm btn-outline-danger', 'data-confirm' => 'Delete this FDP?', 'data-method' => 'post']) ?>
                                     </div>
                                 </td>
