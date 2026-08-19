@@ -32,6 +32,11 @@ $config = [
         ],
         'db' => $db,
     ],
+    'controllerMap' => [
+        'fdp' => [
+            'class' => \app\commands\FdpController::class,
+        ],
+    ],
     'params' => $params,
     /*
     'controllerMap' => [
