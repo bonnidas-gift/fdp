@@ -60,7 +60,8 @@ class FdpAttendance extends ActiveRecord
 
         $header = null;
 
-        while (($data = fgetcsv($handle)) !== false) {
+        // provide explicit parameters for fgetcsv to avoid future PHP warnings
+        while (($data = fgetcsv($handle, 0, ',' , '"', '\\')) !== false) {
             if ($header === null) {
                 $header = array_map(static fn ($value) => strtolower(trim((string) $value)), $data);
                 continue;

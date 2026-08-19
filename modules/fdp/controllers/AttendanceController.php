@@ -70,24 +70,8 @@ class AttendanceController extends Controller
             return $this->redirect(['index', 'fdpId' => $fdpId]);
         }
 
-        if (Yii::$app->request->isPost) {
-            $file = UploadedFile::getInstanceByName('attendance_file');
-            if ($file && $file->tempName) {
-                $rows = FdpAttendance::readCsvRows($file->tempName);
-                foreach ($rows as $row) {
-                    $record = new FdpAttendance();
-                    $record->fdp_id = $fdpId;
-                    $record->faculty_name = $row['name'] ?? '';
-                    $record->faculty_email = $row['email'] ?? '';
-                    $record->status = FdpAttendance::normalizeStatus((string) ($row['status'] ?? 'Present'));
-                    $record->save(false);
-                }
-
-                Yii::$app->session->setFlash('success', 'Attendance uploaded successfully.');
-
-                return $this->redirect(['index', 'fdpId' => $fdpId]);
-            }
-        }
+        // keep create action focused on single-record form submission
+        // CSV bulk uploads are handled by actionUpload below (async)
 
         return $this->render('create', ['fdp' => $fdp, 'model' => $model]);
     }
@@ -104,5 +88,46 @@ class AttendanceController extends Controller
         Yii::$app->session->setFlash('success', 'Attendance row deleted successfully.');
 
         return $this->redirect(['index', 'fdpId' => $fdpId]);
+    }
+
+    public function actionUpload(?int $fdpId = null)
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $fdpId = $fdpId ?? (int) Yii::$app->request->post('fdpId');
+        if ($fdpId <= 0) {
+            return ['success' => false, 'message' => 'Invalid FDP id'];
+        }
+
+        $fdp = Fdp::findOne($fdpId);
+        if ($fdp === null) {
+            return ['success' => false, 'message' => 'FDP not found'];
+        }
+
+        $file = UploadedFile::getInstanceByName('file');
+        if (!$file || !$file->tempName) {
+            return ['success' => false, 'message' => 'No file uploaded'];
+        }
+
+        try {
+            $rows = FdpAttendance::readCsvRows($file->tempName);
+            $inserted = 0;
+            foreach ($rows as $row) {
+                $record = new FdpAttendance();
+                $record->fdp_id = $fdpId;
+                $record->faculty_name = $row['name'] ?? '';
+                $record->faculty_email = $row['email'] ?? '';
+                $record->status = FdpAttendance::normalizeStatus((string) ($row['status'] ?? 'Present'));
+                if ($record->save(false)) {
+                    $inserted++;
+                }
+            }
+
+            return ['success' => true, 'message' => 'Uploaded', 'inserted' => $inserted];
+        } catch (\Throwable $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+
+            return ['success' => false, 'message' => 'Failed to process file'];
+        }
     }
 }
