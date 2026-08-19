@@ -58,6 +58,7 @@ $this->title = 'Add Attendance';
                         <div id="dz-progress-bar" class="progress-bar" role="progressbar" style="width:0%">0%</div>
                     </div>
                     <div id="dz-status" class="small text-muted mt-1"></div>
+                    <pre id="dz-report" class="mt-2 small text-muted" style="display:none; white-space:pre-wrap;"></pre>
                 </div>
             </div>
 
@@ -122,7 +123,17 @@ $this->title = 'Add Attendance';
                 try{
                     const res = xhr.response;
                     if(res && res.success){
-                        statusText.textContent = 'Uploaded: ' + (res.inserted || 0) + ' rows';
+                        const inserted = res.inserted || 0;
+                        const errors = res.errors || [];
+                        statusText.textContent = 'Inserted: ' + inserted + ' rows. Errors: ' + errors.length;
+                        const reportEl = document.getElementById('dz-report');
+                        if (errors.length > 0) {
+                            reportEl.style.display = 'block';
+                            reportEl.textContent = errors.map(e => 'Row ' + e.row + ': ' + (e.errors || []).join('; ')).join('\n');
+                        } else {
+                            reportEl.style.display = 'none';
+                            reportEl.textContent = '';
+                        }
                     } else {
                         statusText.textContent = 'Upload failed: ' + (res && res.message ? res.message : 'Unknown error');
                     }
