@@ -38,9 +38,7 @@ $this->title = 'Defaulters for ' . $fdp->title;
                 </table>
             </div>
 
-            <div class="d-flex justify-content-end">
-                <?= Html::a('Send Defaulter Mail', ['send-defaulter-mail', 'id' => $fdp->id], ['class' => 'btn btn-danger']) ?>
-            </div>
+           
         <?php else: ?>
             <div class="alert alert-light border mb-0">No absentees found for the current FDP.</div>
         <?php endif; ?>
