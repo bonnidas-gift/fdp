@@ -36,6 +36,9 @@ $config = [
         'fdp' => [
             'class' => \app\commands\FdpController::class,
         ],
+        'fdp-reminder' => [
+            'class' => \app\modules\fdp\commands\ReminderController::class,
+        ],
     ],
     'params' => $params,
     /*

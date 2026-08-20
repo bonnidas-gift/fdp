@@ -6,6 +6,7 @@ namespace app\modules\fdp\controllers;
 
 use app\modules\fdp\models\Fdp;
 use app\modules\fdp\models\FdpAttendance;
+use app\modules\fdp\models\FdpParticipant;
 use Yii;
 use yii\data\ActiveDataProvider;
 use yii\web\Controller;
@@ -64,16 +65,24 @@ class AttendanceController extends Controller
         $model = new FdpAttendance();
         $model->fdp_id = $fdpId;
 
+        if (Yii::$app->request->isPost) {
+            $selectedParticipantId = (int) Yii::$app->request->post('participant_id');
+            if ($selectedParticipantId > 0) {
+                $participant = FdpParticipant::findOne(['id' => $selectedParticipantId, 'fdp_id' => $fdpId]);
+                if ($participant !== null) {
+                    $model->faculty_name = $participant->faculty_name;
+                    $model->faculty_email = $participant->faculty_email;
+                }
+            }
+        }
+
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
             Yii::$app->session->setFlash('success', 'Attendance saved successfully.');
 
             return $this->redirect(['index', 'fdpId' => $fdpId]);
         }
 
-        // keep create action focused on single-record form submission
-        // CSV bulk uploads are handled by actionUpload below (async)
-
-        return $this->render('create', ['fdp' => $fdp, 'model' => $model]);
+        return $this->render('create', ['fdp' => $fdp, 'model' => $model, 'participants' => $fdp->getParticipants()->orderBy(['faculty_name' => SORT_ASC])->all()]);
     }
 
     public function actionDelete(int $id): Response
@@ -109,53 +118,58 @@ class AttendanceController extends Controller
             return ['success' => false, 'message' => 'No file uploaded'];
         }
 
-        $handle = fopen($file->tempName, 'rb');
-        if ($handle === false) {
-            return ['success' => false, 'message' => 'Unable to open uploaded file'];
+        $participants = FdpParticipant::find()->where(['fdp_id' => $fdpId])->all();
+        $participantIndex = [];
+        foreach ($participants as $participant) {
+            $email = FdpParticipant::normalizeEmail((string) $participant->faculty_email);
+            if ($email !== '') {
+                $participantIndex[$email] = [
+                    'fdp_id' => (int) $participant->fdp_id,
+                    'faculty_name' => (string) $participant->faculty_name,
+                    'faculty_email' => $email,
+                ];
+            }
         }
 
+        $extension = strtolower((string) pathinfo($file->name, PATHINFO_EXTENSION));
+        $rows = [];
+        if ($extension === 'csv') {
+            $rows = FdpAttendance::readCsvRows($file->tempName);
+        } elseif ($extension === 'xlsx') {
+            $rows = FdpAttendance::readXlsxRows($file->tempName);
+        } else {
+            return ['success' => false, 'message' => 'Unsupported file type. Please upload CSV or Excel (.xlsx) files.'];
+        }
+
+        $existing = FdpAttendance::find()->select('faculty_email')->where(['fdp_id' => $fdpId])->asArray()->all();
+        $existingEmails = array_map(static fn ($row) => FdpParticipant::normalizeEmail((string) ($row['faculty_email'] ?? '')), $existing);
+
+        $splitRows = FdpAttendance::splitValidAndSkippedRowsForFdp($fdpId, $rows, $participantIndex, $existingEmails);
+        $filteredRows = $splitRows['valid'];
+        $skippedRows = $splitRows['skipped'];
         $inserted = 0;
         $batch = [];
         $chunkSize = 200;
-        $header = null;
         $columns = ['fdp_id', 'faculty_name', 'faculty_email', 'status'];
         $errors = [];
-        $line = 0; // tracking CSV line number
 
         $transaction = Yii::$app->db->beginTransaction();
         try {
-            // explicit fgetcsv parameters to be future-proof
-            while (($data = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
-                $line++;
-                if ($header === null) {
-                    $header = array_map(static fn ($value) => strtolower(trim((string) $value)), $data);
-                    continue;
-                }
-
-                $row = [];
-                foreach ($header as $index => $key) {
-                    $row[$key] = $data[$index] ?? '';
-                }
-
-                $name = trim((string) ($row['name'] ?? $row['faculty'] ?? ''));
-                $email = trim((string) ($row['email'] ?? $row['faculty_email'] ?? ''));
-                $status = FdpAttendance::normalizeStatus((string) ($row['status'] ?? $row['attendance'] ?? 'Present'));
-
-                // per-row validation
+            foreach ($filteredRows as $index => $row) {
                 $rowErrors = [];
-                if ($name === '') {
+                if (trim((string) ($row['faculty_name'] ?? '')) === '') {
                     $rowErrors[] = 'Name is required';
                 }
-                if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                if (($row['faculty_email'] ?? '') !== '' && !filter_var($row['faculty_email'], FILTER_VALIDATE_EMAIL)) {
                     $rowErrors[] = 'Invalid email';
                 }
 
                 if (!empty($rowErrors)) {
-                    $errors[] = ['row' => $line, 'errors' => $rowErrors];
-                    // skip adding to batch
-                } else {
-                    $batch[] = [$fdpId, $name, $email, $status];
+                    $errors[] = ['row' => $index + 1, 'errors' => $rowErrors];
+                    continue;
                 }
+
+                $batch[] = [$fdpId, (string) $row['faculty_name'], (string) $row['faculty_email'], (string) $row['status']];
 
                 if (count($batch) >= $chunkSize) {
                     $count = Yii::$app->db->createCommand()->batchInsert(FdpAttendance::tableName(), $columns, $batch)->execute();
@@ -170,12 +184,18 @@ class AttendanceController extends Controller
             }
 
             $transaction->commit();
-            fclose($handle);
 
-            return ['success' => true, 'message' => 'Uploaded', 'inserted' => $inserted, 'errors' => $errors, 'processed' => $line - 1];
+            return [
+                'success' => true,
+                'message' => 'Uploaded',
+                'inserted' => $inserted,
+                'skipped' => count($skippedRows),
+                'not_found' => count($skippedRows),
+                'errors' => $errors,
+                'processed' => count($filteredRows),
+            ];
         } catch (\Throwable $e) {
             $transaction->rollBack();
-            fclose($handle);
             Yii::error($e->getMessage(), __METHOD__);
 
             return ['success' => false, 'message' => 'Failed to process file'];

@@ -21,10 +21,25 @@ $this->title = 'Add Attendance';
             <?php $form = ActiveForm::begin(['options' => ['enctype' => 'multipart/form-data']]); ?>
                 <div class="row g-3">
                     <div class="col-md-12">
-                        <?= $form->field($model, 'faculty_name')->textInput(['maxlength' => true]) ?>
+                        <?= Html::dropDownList('participant_id', null, ['' => 'Select a participant'] + array_reduce($participants, static function ($carry, $participant) {
+                            $carry[(string) $participant->id] = $participant->faculty_name . ' <' . $participant->faculty_email . '>';
+                            return $carry;
+                        }, []), ['class' => 'form-select mb-3', 'id' => 'participant-selector']) ?>
                     </div>
-                    <div class="col-md-12">
-                        <?= $form->field($model, 'faculty_email')->textInput(['maxlength' => true, 'type' => 'email']) ?>
+
+                    <div id="participant-details" class="col-md-12 d-none">
+                        <div class="border rounded p-3 bg-light">
+                            <div class="small text-uppercase text-muted mb-2">Selected participant</div>
+                            <div><strong>Name:</strong> <span id="selected-name">-</span></div>
+                            <div><strong>Email:</strong> <span id="selected-email">-</span></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-12 d-none">
+                        <?= $form->field($model, 'faculty_name')->hiddenInput()->label(false) ?>
+                    </div>
+                    <div class="col-md-12 d-none">
+                        <?= $form->field($model, 'faculty_email')->hiddenInput()->label(false) ?>
                     </div>
                     <div class="col-md-12">
                         <?= $form->field($model, 'status')->dropDownList($model::statusOptions(), ['prompt' => 'Select status']) ?>
@@ -45,14 +60,14 @@ $this->title = 'Add Attendance';
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
                 <div>
                     <h2 class="h5 mb-1">Bulk Upload Attendance</h2>
-                    <p class="text-muted mb-0">Upload a CSV to insert multiple attendance rows (async).</p>
+                    <p class="text-muted mb-0">Upload a CSV or Excel (.xlsx) file to insert multiple attendance rows (async).</p>
                 </div>
             </div>
 
             <div id="csv-dropzone" class="border rounded p-4 text-center" style="background:#fbfbfd; cursor: pointer;">
-                <div id="dz-message">Drag & drop CSV here, or click to select file</div>
-                <input id="dz-file-input" type="file" name="file" accept=".csv,text/csv" style="display:none" />
-                <div class="mt-2 text-muted">CSV should contain columns: name,email,status</div>
+                <div id="dz-message">Drag & drop CSV / Excel here, or click to select file</div>
+                <input id="dz-file-input" type="file" name="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" />
+                <div class="mt-2 text-muted">CSV / Excel should contain columns: name,email,status</div>
                 <div id="dz-progress" class="mt-3" style="display:none">
                     <div class="progress">
                         <div id="dz-progress-bar" class="progress-bar" role="progressbar" style="width:0%">0%</div>
@@ -67,6 +82,46 @@ $this->title = 'Add Attendance';
 
     <script>
     (function(){
+        const participantSelector = document.getElementById('participant-selector');
+        const selectedName = document.getElementById('selected-name');
+        const selectedEmail = document.getElementById('selected-email');
+        const selectedDetails = document.getElementById('participant-details');
+        const facultyNameInput = document.getElementById('fdpattendance-faculty_name');
+        const facultyEmailInput = document.getElementById('fdpattendance-faculty_email');
+        const participants = <?= json_encode(array_reduce($participants, static function ($carry, $participant) {
+            $carry[(string) $participant->id] = [
+                'name' => $participant->faculty_name,
+                'email' => $participant->faculty_email,
+            ];
+            return $carry;
+        }, []), JSON_THROW_ON_ERROR) ?>;
+
+        function applyParticipant(id){
+            const participant = participants[id];
+            if (!participant) {
+                selectedDetails.classList.add('d-none');
+                selectedName.textContent = '-';
+                selectedEmail.textContent = '-';
+                if (facultyNameInput) facultyNameInput.value = '';
+                if (facultyEmailInput) facultyEmailInput.value = '';
+                return;
+            }
+
+            selectedName.textContent = participant.name;
+            selectedEmail.textContent = participant.email;
+            selectedDetails.classList.remove('d-none');
+            if (facultyNameInput) facultyNameInput.value = participant.name;
+            if (facultyEmailInput) facultyEmailInput.value = participant.email;
+        }
+
+        participantSelector.addEventListener('change', function(){
+            applyParticipant(this.value);
+        });
+
+        if (participantSelector.value) {
+            applyParticipant(participantSelector.value);
+        }
+
         const dropzone = document.getElementById('csv-dropzone');
         const input = document.getElementById('dz-file-input');
         const progressWrap = document.getElementById('dz-progress');
@@ -96,8 +151,10 @@ $this->title = 'Add Attendance';
         });
 
         function uploadFile(file) {
-            if (!file.name.toLowerCase().endsWith('.csv')) {
-                alert('Please upload a CSV file'); return;
+            const lower = file.name.toLowerCase();
+            const valid = lower.endsWith('.csv') || lower.endsWith('.xlsx');
+            if (!valid) {
+                alert('Please upload a CSV or .xlsx file'); return;
             }
 
             const xhr = new XMLHttpRequest();
@@ -124,12 +181,20 @@ $this->title = 'Add Attendance';
                     const res = xhr.response;
                     if(res && res.success){
                         const inserted = res.inserted || 0;
+                        const skipped = res.skipped || res.not_found || 0;
                         const errors = res.errors || [];
-                        statusText.textContent = 'Inserted: ' + inserted + ' rows. Errors: ' + errors.length;
+                        statusText.textContent = 'Inserted: ' + inserted + ' rows. Skipped: ' + skipped + '. Errors: ' + errors.length;
                         const reportEl = document.getElementById('dz-report');
+                        const detailLines = [];
                         if (errors.length > 0) {
+                            detailLines.push(...errors.map(e => 'Row ' + e.row + ': ' + (e.errors || []).join('; ')));
+                        }
+                        if (skipped > 0) {
+                            detailLines.push('Skipped ' + skipped + ' faculty rows not found in current FDP participant list.');
+                        }
+                        if (detailLines.length > 0) {
                             reportEl.style.display = 'block';
-                            reportEl.textContent = errors.map(e => 'Row ' + e.row + ': ' + (e.errors || []).join('; ')).join('\n');
+                            reportEl.textContent = detailLines.join('\n');
                         } else {
                             reportEl.style.display = 'none';
                             reportEl.textContent = '';

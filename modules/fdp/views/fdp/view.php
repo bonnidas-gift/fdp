@@ -15,6 +15,7 @@ $this->title = $model->title;
             <div class="d-flex flex-wrap gap-2">
                 <?= Html::a('Back to List', ['index'], ['class' => 'btn btn-outline-secondary']) ?>
                 <?= Html::a('Edit', ['update', 'id' => $model->id], ['class' => 'btn btn-primary']) ?>
+                <?= Html::a('Participants', ['/fdp/participant/index', 'fdpId' => $model->id], ['class' => 'btn btn-info']) ?>
                 <?= Html::a('Attendance', ['/fdp/attendance/index', 'fdpId' => $model->id], ['class' => 'btn btn-warning']) ?>
                 <?= Html::a('Defaulters', ['defaulters', 'id' => $model->id], ['class' => 'btn btn-danger']) ?>
                 <?= Html::a('Delete', ['delete', 'id' => $model->id], ['class' => 'btn btn-outline-danger', 'data-confirm' => 'Delete this FDP?', 'data-method' => 'post']) ?>

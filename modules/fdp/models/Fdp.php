@@ -71,4 +71,9 @@ class Fdp extends ActiveRecord
     {
         return $this->hasMany(FdpAttendance::class, ['fdp_id' => 'id']);
     }
+
+    public function getParticipants()
+    {
+        return $this->hasMany(FdpParticipant::class, ['fdp_id' => 'id']);
+    }
 }

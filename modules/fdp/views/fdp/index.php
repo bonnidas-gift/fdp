@@ -53,6 +53,7 @@ $this->title = 'FDP List';
                                     <div class="d-flex flex-wrap justify-content-center gap-2">
                                         <?= Html::a('View', ['view', 'id' => $fdp->id], ['class' => 'btn btn-sm btn-outline-primary']) ?>
                                         <?= Html::a('Edit', ['update', 'id' => $fdp->id], ['class' => 'btn btn-sm btn-outline-secondary']) ?>
+                                        <?= Html::a('Participants', ['/fdp/participant/index', 'fdpId' => $fdp->id], ['class' => 'btn btn-sm btn-outline-info']) ?>
                                         <?= Html::a('Attendance', ['/fdp/attendance/index', 'fdpId' => $fdp->id], ['class' => 'btn btn-sm btn-outline-secondary']) ?>
                                         <?= Html::a('Delete', ['delete', 'id' => $fdp->id], ['class' => 'btn btn-sm btn-outline-danger', 'data-confirm' => 'Delete this FDP?', 'data-method' => 'post']) ?>
                                     </div>
