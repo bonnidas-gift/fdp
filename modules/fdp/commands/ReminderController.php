@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\modules\fdp\commands;
 
 use app\modules\fdp\models\Fdp;
+use app\modules\fdp\models\FdpMailQueue;
 use app\modules\fdp\models\FdpMailService;
 use app\modules\fdp\models\FdpParticipant;
 use DateTimeImmutable;
@@ -17,14 +18,24 @@ class ReminderController extends Controller
     public function actionSend(): int
     {
         $today = new DateTimeImmutable('today', new DateTimeZone('UTC'));
-        $targetDate = $today->modify('+1 day')->format('Y-m-d');
+        $today = $today->setTime(0, 0, 0);
 
-        $fdps = Fdp::find()->where(['<=', 'start_date', $targetDate])->andWhere(['>=', 'start_date', $targetDate])->all();
+        $fdps = Fdp::find()->all();
 
         foreach ($fdps as $fdp) {
+            $startDate = DateTimeImmutable::createFromFormat('!Y-m-d', $fdp->start_date, new DateTimeZone('UTC'));
+            if ($startDate === false) {
+                continue;
+            }
+            $startDate = $startDate->setTime(0, 0, 0);
+
+            if (!FdpMailService::isReminderDue($fdp->start_date, $today->format('Y-m-d'))) {
+                continue;
+            }
+
             if ($fdp->reminder_sent_at !== null && $fdp->reminder_sent_at !== '') {
-                $sentAt = new DateTimeImmutable($fdp->reminder_sent_at, new DateTimeZone('UTC'));
-                if ($sentAt->format('Y-m-d') === $targetDate) {
+                $sentAt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $fdp->reminder_sent_at, new DateTimeZone('UTC'));
+                if ($sentAt !== false && $sentAt->setTime(0, 0, 0)->format('Y-m-d') === $startDate->format('Y-m-d')) {
                     continue;
                 }
             }
@@ -34,37 +45,34 @@ class ReminderController extends Controller
                 continue;
             }
 
-            $mail = FdpMailService::buildReminderMail([
-                'title' => $fdp->title,
-                'start_date' => $fdp->start_date,
-                'end_date' => $fdp->end_date,
-                'time' => $fdp->time,
-                'mode' => $fdp->mode,
-                'venue' => $fdp->venue ?: $fdp->meeting_link,
-                'coordinator' => $fdp->coordinator_name,
-            ]);
-
             foreach ($participants as $participant) {
-                $this->sendMail((string) $participant->faculty_email, $mail['subject'], $mail['body']);
+                $mail = FdpMailService::buildReminderMail([
+                    'title' => $fdp->title,
+                    'start_date' => $fdp->start_date,
+                    'end_date' => $fdp->end_date,
+                    'time' => $fdp->time,
+                    'mode' => $fdp->mode,
+                    'venue' => $fdp->venue ?: $fdp->meeting_link,
+                    'coordinator' => $fdp->coordinator_name,
+                ]);
+
+                FdpMailQueue::queue(
+                    'reminder',
+                    (int) $fdp->id,
+                    (string) $participant->faculty_email,
+                    $mail['subject'],
+                    $mail['body'],
+                    $mail['htmlBody']
+                );
             }
 
             $fdp->reminder_sent_at = $today->format('Y-m-d H:i:s');
             $fdp->save(false);
-            echo "Sent reminder for FDP #{$fdp->id}: {$fdp->title}\n";
+
+            $queued = FdpMailQueue::processPending();
+            echo "Queued and sent {$queued} reminder mail(s) for FDP #{$fdp->id}: {$fdp->title}\n";
         }
 
         return ExitCode::OK;
-    }
-
-    protected function sendMail(string $to, string $subject, string $body): bool
-    {
-        $headers = [
-            'From: noreply@localhost',
-            'Reply-To: noreply@localhost',
-            'MIME-Version: 1.0',
-            'Content-Type: text/plain; charset=UTF-8',
-        ];
-
-        return mail($to, $subject, $body, implode("\r\n", $headers));
     }
 }

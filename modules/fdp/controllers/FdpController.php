@@ -100,49 +100,6 @@ class FdpController extends Controller
         return $this->render('defaulters', ['fdp' => $fdp, 'defaulters' => $records]);
     }
 
-    public function actionSendReminder(int $id): Response
-    {
-        $fdp = $this->findModel($id);
-        $mail = FdpMailService::buildReminderMail([
-            'title' => $fdp->title,
-            'start_date' => $fdp->start_date,
-            'end_date' => $fdp->end_date,
-            'time' => $fdp->time,
-            'mode' => $fdp->mode,
-            'venue' => $fdp->venue ?: $fdp->meeting_link,
-            'coordinator' => $fdp->coordinator_name,
-        ]);
-
-        Yii::$app->session->setFlash('success', 'Reminder mail prepared: ' . $mail['subject']);
-
-        return $this->redirect(['view', 'id' => $id]);
-    }
-
-    public function actionSendDefaulterMail(int $id): Response
-    {
-        $fdp = $this->findModel($id);
-        $defaulters = $fdp->getAttendanceRecords()->where(['status' => 'Absent'])->all();
-
-        if (empty($defaulters)) {
-            Yii::$app->session->setFlash('info', 'No defaulters found for this FDP.');
-
-            return $this->redirect(['defaulters', 'id' => $id]);
-        }
-
-        foreach ($defaulters as $person) {
-            $mail = FdpMailService::buildDefaulterMail([
-                'title' => $fdp->title,
-                'date' => $fdp->start_date,
-            ], [
-                'name' => $person->faculty_name,
-            ]);
-
-            Yii::$app->session->setFlash('success', 'Defaulter mails prepared: ' . $mail['subject']);
-        }
-
-        return $this->redirect(['defaulters', 'id' => $id]);
-    }
-
     protected function findModel(int $id): Fdp
     {
         $model = Fdp::findOne($id);

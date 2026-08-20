@@ -6,6 +6,8 @@ namespace app\modules\fdp\controllers;
 
 use app\modules\fdp\models\Fdp;
 use app\modules\fdp\models\FdpAttendance;
+use app\modules\fdp\models\FdpMailQueue;
+use app\modules\fdp\models\FdpMailService;
 use app\modules\fdp\models\FdpParticipant;
 use Yii;
 use yii\data\ActiveDataProvider;
@@ -77,6 +79,7 @@ class AttendanceController extends Controller
         }
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            $this->queueDefaulterMailIfNeeded($model);
             Yii::$app->session->setFlash('success', 'Attendance saved successfully.');
 
             return $this->redirect(['index', 'fdpId' => $fdpId]);
@@ -193,6 +196,31 @@ class AttendanceController extends Controller
                 $inserted += (int) $count;
             }
 
+            foreach ($filteredRows as $row) {
+                if (FdpAttendance::normalizeStatus((string) ($row['status'] ?? 'Present')) !== 'Absent') {
+                    continue;
+                }
+
+                $email = FdpParticipant::normalizeEmail((string) ($row['faculty_email'] ?? ''));
+                if ($email === '') {
+                    continue;
+                }
+
+                $mail = FdpMailService::buildDefaulterMail([
+                    'title' => $fdp->title,
+                    'date' => $fdp->start_date,
+                ], ['name' => (string) ($row['faculty_name'] ?? 'Sir/Madam')]);
+
+                FdpMailQueue::queue(
+                    'defaulter',
+                    (int) $fdpId,
+                    $email,
+                    $mail['subject'],
+                    $mail['body'],
+                    $mail['htmlBody']
+                );
+            }
+
             $transaction->commit();
 
             return [
@@ -211,5 +239,36 @@ class AttendanceController extends Controller
 
             return ['success' => false, 'message' => 'Failed to process file'];
         }
+    }
+
+    private function queueDefaulterMailIfNeeded(FdpAttendance $attendance): void
+    {
+        if (FdpAttendance::normalizeStatus((string) $attendance->status) !== 'Absent') {
+            return;
+        }
+
+        $email = FdpParticipant::normalizeEmail((string) ($attendance->faculty_email ?? ''));
+        if ($email === '') {
+            return;
+        }
+
+        $fdp = Fdp::findOne((int) $attendance->fdp_id);
+        if ($fdp === null) {
+            return;
+        }
+
+        $mail = FdpMailService::buildDefaulterMail([
+            'title' => $fdp->title,
+            'date' => $fdp->start_date,
+        ], ['name' => (string) ($attendance->faculty_name ?: 'Sir/Madam')]);
+
+        FdpMailQueue::queue(
+            'defaulter',
+            (int) $attendance->fdp_id,
+            $email,
+            $mail['subject'],
+            $mail['body'],
+            $mail['htmlBody']
+        );
     }
 }

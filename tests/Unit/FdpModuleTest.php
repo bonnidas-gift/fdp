@@ -43,6 +43,42 @@ final class FdpModuleTest extends TestCase
         $this->assertStringContainsString('If your absence was due to valid reasons', $mail['body']);
     }
 
+    public function testReminderAndDefaulterMailsIncludeHtmlContent(): void
+    {
+        $reminder = FdpMailService::buildReminderMail([
+            'title' => 'AI in Teaching',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-03',
+            'time' => '09:30 AM - 04:30 PM',
+            'mode' => 'Online',
+            'venue' => 'https://meet.example.com/fdp',
+            'coordinator' => 'Dr. Smith',
+        ]);
+
+        $this->assertArrayHasKey('htmlBody', $reminder);
+        $this->assertStringContainsString('<html', strtolower($reminder['htmlBody']));
+        $this->assertStringContainsString('<table', strtolower($reminder['htmlBody']));
+
+        $defaulter = FdpMailService::buildDefaulterMail([
+            'title' => 'Research Methodology',
+            'date' => '2026-07-15',
+        ], [
+            'name' => 'Prof. Kumar',
+        ]);
+
+        $this->assertArrayHasKey('htmlBody', $defaulter);
+        $this->assertStringContainsString('<html', strtolower($defaulter['htmlBody']));
+        $this->assertStringContainsString('Prof. Kumar', $defaulter['htmlBody']);
+    }
+
+    public function testReminderIsDueOnlyOneDayBeforeStartDate(): void
+    {
+        $this->assertTrue(FdpMailService::isReminderDue('2026-09-01', '2026-08-31'));
+        $this->assertFalse(FdpMailService::isReminderDue('2026-09-01', '2026-08-30'));
+        $this->assertFalse(FdpMailService::isReminderDue('2026-09-01', '2026-09-01'));
+        $this->assertFalse(FdpMailService::isReminderDue('2026-09-01', '2026-09-02'));
+    }
+
     public function testParticipantEmailIsNormalizedBeforeMatching(): void
     {
         $this->assertSame('alice@example.com', FdpParticipant::normalizeEmail(' Alice@Example.com '));

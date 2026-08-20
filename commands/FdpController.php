@@ -12,64 +12,6 @@ use yii\console\ExitCode;
 
 class FdpController extends Controller
 {
-    public function actionReminder(int $id): int
-    {
-        $fdp = Fdp::findOne($id);
-
-        if ($fdp === null) {
-            echo "FDP not found.\n";
-
-            return ExitCode::DATAERR;
-        }
-
-        $mail = FdpMailService::buildReminderMail([
-            'title' => $fdp->title,
-            'start_date' => $fdp->start_date,
-            'end_date' => $fdp->end_date,
-            'time' => $fdp->time,
-            'mode' => $fdp->mode,
-            'venue' => $fdp->venue ?: $fdp->meeting_link,
-            'coordinator' => $fdp->coordinator_name,
-        ]);
-
-        echo "Subject: {$mail['subject']}\n";
-        echo "Body:\n{$mail['body']}\n";
-
-        return ExitCode::OK;
-    }
-
-    public function actionDefaulters(int $id): int
-    {
-        $fdp = Fdp::findOne($id);
-
-        if ($fdp === null) {
-            echo "FDP not found.\n";
-
-            return ExitCode::DATAERR;
-        }
-
-        $records = $fdp->getAttendanceRecords()->where(['status' => 'Absent'])->all();
-
-        if (empty($records)) {
-            echo "No defaulters found.\n";
-
-            return ExitCode::OK;
-        }
-
-        foreach ($records as $record) {
-            $mail = FdpMailService::buildDefaulterMail([
-                'title' => $fdp->title,
-                'date' => $fdp->start_date,
-            ], ['name' => $record->faculty_name]);
-
-            echo "To: {$record->faculty_email}\n";
-            echo "Subject: {$mail['subject']}\n";
-            echo "Body:\n{$mail['body']}\n\n";
-        }
-
-        return ExitCode::OK;
-    }
-
     public function actionStatus(int $id): int
     {
         $fdp = Fdp::findOne($id);

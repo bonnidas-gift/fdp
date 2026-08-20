@@ -13,6 +13,15 @@ $config = [
         '@npm'   => '@vendor/npm-asset',
         '@tests' => '@app/tests',
     ],
+    'container' => [
+        'singletons' => [
+            \yii\mail\MailerInterface::class => [
+                'class' => \yii\symfonymailer\Mailer::class,
+                'useFileTransport' => true,
+                'viewPath' => '@app/mail',
+            ],
+        ],
+    ],
     'modules' => [
         'fdp' => [
             'class' => \app\modules\fdp\Module::class,
@@ -22,6 +31,7 @@ $config = [
         'cache' => [
             'class' => \yii\caching\FileCache::class,
         ],
+        'mailer' => \yii\mail\MailerInterface::class,
         'log' => [
             'targets' => [
                 [
@@ -38,6 +48,9 @@ $config = [
         ],
         'fdp-reminder' => [
             'class' => \app\modules\fdp\commands\ReminderController::class,
+        ],
+        'fdp-defaulter' => [
+            'class' => \app\modules\fdp\commands\DefaulterController::class,
         ],
     ],
     'params' => $params,
