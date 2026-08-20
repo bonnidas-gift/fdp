@@ -181,7 +181,9 @@ $this->title = 'Add Attendance';
                     const res = xhr.response;
                     if(res && res.success){
                         const inserted = res.inserted || 0;
-                        const skipped = res.skipped || res.not_found || 0;
+                        const skipped = res.skipped || 0;
+                        const notFound = res.not_found || 0;
+                        const duplicate = res.duplicate || 0;
                         const errors = res.errors || [];
                         statusText.textContent = 'Inserted: ' + inserted + ' rows. Skipped: ' + skipped + '. Errors: ' + errors.length;
                         const reportEl = document.getElementById('dz-report');
@@ -189,8 +191,11 @@ $this->title = 'Add Attendance';
                         if (errors.length > 0) {
                             detailLines.push(...errors.map(e => 'Row ' + e.row + ': ' + (e.errors || []).join('; ')));
                         }
-                        if (skipped > 0) {
-                            detailLines.push('Skipped ' + skipped + ' faculty rows not found in current FDP participant list.');
+                        if (notFound > 0) {
+                            detailLines.push('Skipped ' + notFound + ' rows because the participant is not in the current FDP participant list.');
+                        }
+                        if (duplicate > 0) {
+                            detailLines.push('Skipped ' + duplicate + ' rows because attendance already exists for that participant in this FDP.');
                         }
                         if (detailLines.length > 0) {
                             reportEl.style.display = 'block';

@@ -147,6 +147,16 @@ class AttendanceController extends Controller
         $splitRows = FdpAttendance::splitValidAndSkippedRowsForFdp($fdpId, $rows, $participantIndex, $existingEmails);
         $filteredRows = $splitRows['valid'];
         $skippedRows = $splitRows['skipped'];
+        $notFoundCount = 0;
+        $duplicateCount = 0;
+        foreach ($skippedRows as $skippedRow) {
+            $reason = (string) ($skippedRow['reason'] ?? '');
+            if ($reason === 'Attendance already exists for this participant in this FDP') {
+                $duplicateCount++;
+            } elseif ($reason !== '') {
+                $notFoundCount++;
+            }
+        }
         $inserted = 0;
         $batch = [];
         $chunkSize = 200;
@@ -190,7 +200,8 @@ class AttendanceController extends Controller
                 'message' => 'Uploaded',
                 'inserted' => $inserted,
                 'skipped' => count($skippedRows),
-                'not_found' => count($skippedRows),
+                'not_found' => $notFoundCount,
+                'duplicate' => $duplicateCount,
                 'errors' => $errors,
                 'processed' => count($filteredRows),
             ];

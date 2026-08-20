@@ -48,3 +48,46 @@ use yii\helpers\Html;
         </div>
     </div>
 <?php ActiveForm::end(); ?>
+<script>
+(function(){
+    const startEl = document.querySelector('#fdp-start_date');
+    const endEl = document.querySelector('#fdp-end_date');
+    const timeStartEl = document.querySelector('#fdp-time_start');
+    const timeEndEl = document.querySelector('#fdp-time_end');
+    const form = document.querySelector('form');
+
+    const today = '<?= date('Y-m-d') ?>';
+    if (startEl) startEl.min = today;
+    if (endEl) endEl.min = startEl && startEl.value ? startEl.value : today;
+
+    if (startEl) {
+        startEl.addEventListener('change', function(){
+            if (endEl) {
+                endEl.min = startEl.value || today;
+                if (endEl.value && endEl.value < endEl.min) endEl.value = endEl.min;
+            }
+        });
+    }
+
+    if (form) {
+        form.addEventListener('submit', function(e){
+            const s = startEl && startEl.value;
+            const en = endEl && endEl.value;
+            const ts = timeStartEl && timeStartEl.value;
+            const te = timeEndEl && timeEndEl.value;
+
+            if (s && en && en < s) {
+                e.preventDefault();
+                alert('End date cannot be earlier than start date.');
+                return false;
+            }
+
+            if (s && en && s === en && ts && te && te < ts) {
+                e.preventDefault();
+                alert('End time cannot be earlier than start time when on the same date.');
+                return false;
+            }
+        });
+    }
+})();
+</script>
