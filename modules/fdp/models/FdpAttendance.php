@@ -18,10 +18,31 @@ class FdpAttendance extends ActiveRecord
         return [
             [['fdp_id', 'faculty_name', 'status'], 'required'],
             ['faculty_email', 'email'],
+            ['faculty_email', 'validateDuplicateAttendance'],
             ['status', 'in', 'range' => array_keys(self::statusOptions())],
             ['fdp_id', 'integer'],
             ['notes', 'string'],
         ];
+    }
+
+    public function validateDuplicateAttendance(string $attribute): void
+    {
+        $email = FdpParticipant::normalizeEmail((string) $this->$attribute);
+        if ($email === '' || (int) $this->fdp_id <= 0) {
+            return;
+        }
+
+        $query = self::find()
+            ->where(['fdp_id' => (int) $this->fdp_id])
+            ->andWhere(['LOWER(faculty_email)' => $email]);
+
+        if (!$this->isNewRecord) {
+            $query->andWhere(['<>', 'id', (int) $this->id]);
+        }
+
+        if ($query->exists()) {
+            $this->addError($attribute, 'Attendance already exists for this participant in this FDP.');
+        }
     }
 
     public static function statusOptions(): array

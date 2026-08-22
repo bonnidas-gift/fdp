@@ -19,6 +19,13 @@ $this->title = 'Add Attendance';
             </div>
 
             <?php $form = ActiveForm::begin(['options' => ['enctype' => 'multipart/form-data']]); ?>
+                <?php if ($model->hasErrors('faculty_email')): ?>
+                    <?php foreach ($model->getErrors('faculty_email') as $error): ?>
+                        <?php if ($error === 'Attendance already exists for this participant in this FDP.'): ?>
+                            <div class="alert alert-danger mb-3"><?= Html::encode($error) ?></div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
                 <div class="row g-3">
                     <div class="col-md-12">
                         <?= Html::dropDownList('participant_id', null, ['' => 'Select a participant'] + array_reduce($participants, static function ($carry, $participant) {

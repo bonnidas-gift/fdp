@@ -88,8 +88,9 @@ class AttendanceController extends Controller
         $model = new FdpAttendance();
         $model->fdp_id = $fdpId;
 
-        if (Yii::$app->request->isPost) {
-            $selectedParticipantId = (int) Yii::$app->request->post('participant_id');
+        $request = Yii::$app->request;
+        if ($request->isPost && $model->load($request->post())) {
+            $selectedParticipantId = (int) $request->post('participant_id');
             if ($selectedParticipantId > 0) {
                 $participant = FdpParticipant::findOne(['id' => $selectedParticipantId, 'fdp_id' => $fdpId]);
                 if ($participant !== null) {
@@ -97,13 +98,13 @@ class AttendanceController extends Controller
                     $model->faculty_email = $participant->faculty_email;
                 }
             }
-        }
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
-            $this->queueDefaulterMailIfNeeded($model);
-            Yii::$app->session->setFlash('success', 'Attendance saved successfully.');
+            if ($model->save()) {
+                $this->queueDefaulterMailIfNeeded($model);
+                Yii::$app->session->setFlash('success', 'Attendance saved successfully.');
 
-            return $this->redirect(['index', 'fdpId' => $fdpId]);
+                return $this->redirect(['index', 'fdpId' => $fdpId]);
+            }
         }
 
         return $this->render('create', ['fdp' => $fdp, 'model' => $model, 'participants' => $fdp->getParticipants()->orderBy(['faculty_name' => SORT_ASC])->all()]);
