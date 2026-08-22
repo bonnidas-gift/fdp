@@ -74,12 +74,7 @@ $this->title = 'Defaulters for ' . $fdp->title;
                     <div class="soft-label mb-2 text-white-50">Defaulter Report</div>
                     <h1 class="display-6 fw-semibold mb-3"><?= Html::encode($fdp->title) ?></h1>
                     <p class="mb-4 text-white-75">A focused list of absent participants with quick visibility into the size of the defaulter pool and overall attendance coverage.</p>
-                    <div class="d-flex flex-wrap gap-2">
-                        <span class="badge rounded-pill bg-light text-dark">Participants: <?= number_format($participantCount) ?></span>
-                        <span class="badge rounded-pill bg-light text-dark">Defaulters: <?= number_format($defaulterCount) ?></span>
-                        <span class="badge rounded-pill bg-light text-dark">Coverage: <?= number_format($coverageRate) ?>%</span>
-                        <span class="badge rounded-pill bg-light text-dark">Defaulter rate: <?= number_format($defaulterRate) ?>%</span>
-                    </div>
+                    
                 </div>
                 <div class="col-lg-4">
                     <div class="bg-white text-dark rounded-4 p-4 shadow-sm h-100">
@@ -91,44 +86,7 @@ $this->title = 'Defaulters for ' . $fdp->title;
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-6 col-xl-3">
-            <div class="card fdp-summary-card h-100">
-                <div class="card-body p-4">
-                    <div class="metric-pill metric-danger mb-3">Defaulters</div>
-                    <div class="display-6 fw-semibold mb-2 text-danger"><?= number_format($defaulterCount) ?></div>
-                    <div class="text-muted small">Absent for this FDP</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="card fdp-summary-card h-100">
-                <div class="card-body p-4">
-                    <div class="metric-pill metric-primary mb-3">Attendance Marked</div>
-                    <div class="display-6 fw-semibold mb-2"><?= number_format($attendanceCount) ?></div>
-                    <div class="text-muted small">Total attendance entries</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="card fdp-summary-card h-100">
-                <div class="card-body p-4">
-                    <div class="metric-pill metric-success mb-3">Present</div>
-                    <div class="display-6 fw-semibold mb-2 text-success"><?= number_format($presentCount) ?></div>
-                    <div class="text-muted small">Participants who attended</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="card fdp-summary-card h-100">
-                <div class="card-body p-4">
-                    <div class="metric-pill metric-info mb-3">Coverage</div>
-                    <div class="display-6 fw-semibold mb-2 text-info"><?= number_format($coverageRate) ?>%</div>
-                    <div class="text-muted small">Attendance coverage rate</div>
-                </div>
-            </div>
-        </div>
-    </div>
+   
 
     <?php if (!empty($defaulters)): ?>
         <div class="card fdp-table-card">
