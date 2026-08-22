@@ -54,7 +54,28 @@ class FdpController extends Controller
 
     public function actionView(int $id): string
     {
-        return $this->render('view', ['model' => $this->findModel($id)]);
+        $model = $this->findModel($id);
+
+        $participantCount = (int) $model->getParticipants()->count();
+        $attendanceCount = (int) $model->getAttendanceRecords()->count();
+        $attendedCount = (int) $model->getAttendanceRecords()->andWhere(['status' => 'Present'])->count();
+        $absentCount = (int) $model->getAttendanceRecords()->andWhere(['status' => 'Absent'])->count();
+        $onDutyCount = (int) $model->getAttendanceRecords()->andWhere(['status' => 'On Duty'])->count();
+        $leaveCount = (int) $model->getAttendanceRecords()->andWhere(['status' => 'Leave'])->count();
+        $attendanceCoverage = $participantCount > 0 ? (int) round(($attendanceCount / $participantCount) * 100) : 0;
+        $attendanceRate = $participantCount > 0 ? (int) round(($attendedCount / $participantCount) * 100) : 0;
+
+        return $this->render('view', [
+            'model' => $model,
+            'participantCount' => $participantCount,
+            'attendanceCount' => $attendanceCount,
+            'attendedCount' => $attendedCount,
+            'absentCount' => $absentCount,
+            'onDutyCount' => $onDutyCount,
+            'leaveCount' => $leaveCount,
+            'attendanceCoverage' => $attendanceCoverage,
+            'attendanceRate' => $attendanceRate,
+        ]);
     }
 
     public function actionCreate(): string|Response
@@ -96,8 +117,23 @@ class FdpController extends Controller
     {
         $fdp = $this->findModel($id);
         $records = $fdp->getAttendanceRecords()->where(['status' => 'Absent'])->all();
+        $participantCount = (int) $fdp->getParticipants()->count();
+        $defaulterCount = count($records);
+        $attendanceCount = (int) $fdp->getAttendanceRecords()->count();
+        $presentCount = (int) $fdp->getAttendanceRecords()->andWhere(['status' => 'Present'])->count();
+        $coverageRate = $participantCount > 0 ? (int) round(($attendanceCount / $participantCount) * 100) : 0;
+        $defaulterRate = $participantCount > 0 ? (int) round(($defaulterCount / $participantCount) * 100) : 0;
 
-        return $this->render('defaulters', ['fdp' => $fdp, 'defaulters' => $records]);
+        return $this->render('defaulters', [
+            'fdp' => $fdp,
+            'defaulters' => $records,
+            'participantCount' => $participantCount,
+            'defaulterCount' => $defaulterCount,
+            'attendanceCount' => $attendanceCount,
+            'presentCount' => $presentCount,
+            'coverageRate' => $coverageRate,
+            'defaulterRate' => $defaulterRate,
+        ]);
     }
 
     protected function findModel(int $id): Fdp

@@ -46,7 +46,28 @@ class AttendanceController extends Controller
             'pagination' => ['pageSize' => 10],
         ]);
 
-        return $this->render('index', ['fdp' => $fdp, 'dataProvider' => $dataProvider]);
+        $recordsQuery = $fdp->getAttendanceRecords();
+        $recordCount = (int) $recordsQuery->count();
+        $presentCount = (int) (clone $recordsQuery)->andWhere(['status' => 'Present'])->count();
+        $absentCount = (int) (clone $recordsQuery)->andWhere(['status' => 'Absent'])->count();
+        $onDutyCount = (int) (clone $recordsQuery)->andWhere(['status' => 'On Duty'])->count();
+        $leaveCount = (int) (clone $recordsQuery)->andWhere(['status' => 'Leave'])->count();
+        $participantCount = (int) $fdp->getParticipants()->count();
+        $attendanceRate = $participantCount > 0 ? (int) round(($presentCount / $participantCount) * 100) : 0;
+        $coverageRate = $participantCount > 0 ? (int) round(($recordCount / $participantCount) * 100) : 0;
+
+        return $this->render('index', [
+            'fdp' => $fdp,
+            'dataProvider' => $dataProvider,
+            'recordCount' => $recordCount,
+            'presentCount' => $presentCount,
+            'absentCount' => $absentCount,
+            'onDutyCount' => $onDutyCount,
+            'leaveCount' => $leaveCount,
+            'participantCount' => $participantCount,
+            'attendanceRate' => $attendanceRate,
+            'coverageRate' => $coverageRate,
+        ]);
     }
 
     public function actionCreate(?int $fdpId = null): string|Response

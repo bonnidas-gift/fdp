@@ -37,7 +37,11 @@ class ParticipantController extends Controller
             'pagination' => ['pageSize' => 10],
         ]);
 
-        return $this->render('index', ['fdp' => $fdp, 'dataProvider' => $dataProvider]);
+        return $this->render('index', [
+            'fdp' => $fdp,
+            'dataProvider' => $dataProvider,
+            'participantCount' => (int) $query->count(),
+        ]);
     }
 
     public function actionCreate(?int $fdpId = null): string|Response
